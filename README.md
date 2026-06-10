@@ -25,6 +25,15 @@ This code assumes the following setup:
 
 If your team uses L298N instead of TB6612FNG, the code can be adapted later.
 
+## Build Requirements
+
+In the Arduino IDE:
+
+1. Install **ESP32 board support** via Boards Manager (search "esp32" by Espressif). Both core 2.x and 3.x are supported by this sketch.
+2. Install the **ESP32Servo** library via Library Manager.
+3. `BluetoothSerial` ships with the ESP32 board package — no separate install needed.
+4. Select an ESP32 board that supports classic Bluetooth (the original ESP32, not S2/S3/C3) and the correct serial port, then upload `src/main.ino`.
+
 ## Pin Assignment
 
 | Function | ESP32 Pin |

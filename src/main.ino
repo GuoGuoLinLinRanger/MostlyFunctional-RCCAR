@@ -105,11 +105,29 @@ void setupMotorPins() {
 }
 
 void setupPWM() {
+#if ESP_ARDUINO_VERSION_MAJOR >= 3
+  // ESP32 Arduino core 3.x: attach the pin directly with freq + resolution.
+  ledcAttach(MOTOR_A_PWM, PWM_FREQ, PWM_RESOLUTION);
+  ledcAttach(MOTOR_B_PWM, PWM_FREQ, PWM_RESOLUTION);
+#else
+  // ESP32 Arduino core 2.x: configure a channel, then bind the pin to it.
   ledcSetup(PWM_CHANNEL_A, PWM_FREQ, PWM_RESOLUTION);
   ledcSetup(PWM_CHANNEL_B, PWM_FREQ, PWM_RESOLUTION);
 
   ledcAttachPin(MOTOR_A_PWM, PWM_CHANNEL_A);
   ledcAttachPin(MOTOR_B_PWM, PWM_CHANNEL_B);
+#endif
+}
+
+// Write a PWM duty cycle. Core 3.x addresses the pin; core 2.x the channel.
+void writeMotorPWM(int pin, int channel, int duty) {
+#if ESP_ARDUINO_VERSION_MAJOR >= 3
+  (void)channel;
+  ledcWrite(pin, duty);
+#else
+  (void)pin;
+  ledcWrite(channel, duty);
+#endif
 }
 
 void setupServo() {
@@ -209,8 +227,8 @@ void moveForward(int speedValue) {
   digitalWrite(MOTOR_B_IN1, HIGH);
   digitalWrite(MOTOR_B_IN2, LOW);
 
-  ledcWrite(PWM_CHANNEL_A, speedValue);
-  ledcWrite(PWM_CHANNEL_B, speedValue);
+  writeMotorPWM(MOTOR_A_PWM, PWM_CHANNEL_A, speedValue);
+  writeMotorPWM(MOTOR_B_PWM, PWM_CHANNEL_B, speedValue);
 
   motorsRunning = speedValue > 0;
   Serial.println("Moving forward at speed " + String(speedValue));
@@ -224,16 +242,16 @@ void moveBackward(int speedValue) {
   digitalWrite(MOTOR_B_IN1, LOW);
   digitalWrite(MOTOR_B_IN2, HIGH);
 
-  ledcWrite(PWM_CHANNEL_A, speedValue);
-  ledcWrite(PWM_CHANNEL_B, speedValue);
+  writeMotorPWM(MOTOR_A_PWM, PWM_CHANNEL_A, speedValue);
+  writeMotorPWM(MOTOR_B_PWM, PWM_CHANNEL_B, speedValue);
 
   motorsRunning = speedValue > 0;
   Serial.println("Moving backward at speed " + String(speedValue));
 }
 
 void stopMotors() {
-  ledcWrite(PWM_CHANNEL_A, 0);
-  ledcWrite(PWM_CHANNEL_B, 0);
+  writeMotorPWM(MOTOR_A_PWM, PWM_CHANNEL_A, 0);
+  writeMotorPWM(MOTOR_B_PWM, PWM_CHANNEL_B, 0);
 
   digitalWrite(MOTOR_A_IN1, LOW);
   digitalWrite(MOTOR_A_IN2, LOW);
