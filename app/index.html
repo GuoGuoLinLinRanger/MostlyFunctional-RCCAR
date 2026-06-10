@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>ESP32 RC Car — Remote</title>
+<style>
+  :root { --gap: 12px; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    background: #0e1116; color: #e6edf3;
+    display: flex; flex-direction: column; gap: var(--gap);
+    padding: var(--gap); user-select: none;
+  }
+  header { display: flex; align-items: center; gap: var(--gap); }
+  h1 { font-size: 1.05rem; margin: 0; flex: 1; }
+  #status { font-size: .8rem; padding: 4px 10px; border-radius: 999px; background: #30363d; }
+  #status.on { background: #1a7f37; }
+  #status.err { background: #b62324; }
+  button {
+    font: inherit; color: #e6edf3; background: #21262d; border: 1px solid #30363d;
+    border-radius: 12px; padding: 14px; cursor: pointer; touch-action: manipulation;
+  }
+  button:active { background: #30363d; }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+  .primary { background: #1f6feb; border-color: #1f6feb; }
+  .pad {
+    display: grid; gap: var(--gap);
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-areas:
+      ".    fwd  ."
+      "left ctr  right"
+      ".    back .";
+    max-width: 420px; margin: 0 auto; width: 100%;
+  }
+  .pad .fwd  { grid-area: fwd; }
+  .pad .back { grid-area: back; }
+  .pad .left { grid-area: left; }
+  .pad .right{ grid-area: right; }
+  .pad .ctr  { grid-area: ctr; }
+  .drive { height: 84px; font-size: 1.4rem; }
+  .speed { display: flex; flex-direction: column; gap: 6px; max-width: 420px; margin: 0 auto; width: 100%; }
+  .speed input { width: 100%; }
+  .row { display: flex; gap: var(--gap); max-width: 420px; margin: 0 auto; width: 100%; }
+  .row button { flex: 1; }
+  .hint { font-size: .75rem; color: #8b949e; max-width: 420px; margin: 0 auto; text-align: center; }
+</style>
+</head>
+<body>
+  <header>
+    <h1>ESP32 RC Car</h1>
+    <span id="status">disconnected</span>
+  </header>
+
+  <div class="row">
+    <button id="connectBtn" class="primary">Connect</button>
+    <button id="disconnectBtn" disabled>Disconnect</button>
+  </div>
+
+  <div class="pad">
+    <button class="fwd drive hold" data-press="F" disabled>▲<br>Forward</button>
+    <button class="left drive hold" data-press="L" data-release="C" disabled>◀<br>Left</button>
+    <button class="ctr drive" data-tap="C" disabled>● Center</button>
+    <button class="right drive hold" data-press="R" data-release="C" disabled>▶<br>Right</button>
+    <button class="back drive hold" data-press="B" disabled>▼<br>Back</button>
+  </div>
+
+  <div class="row">
+    <button id="stopBtn" disabled style="background:#b62324;border-color:#b62324;">■ STOP</button>
+  </div>
+
+  <div class="speed">
+    <label>Speed: <span id="speedVal">150</span></label>
+    <input id="speed" type="range" min="0" max="255" value="150" disabled />
+  </div>
+
+  <p class="hint">
+    Requires a Web Bluetooth browser (Android Chrome, desktop Chrome/Edge) and the
+    <code>main_ble.ino</code> firmware. Hold a drive button to move; release to stop.
+    iOS Safari is not supported.
+  </p>
+
+<script>
+// Nordic UART Service (matches src/main_ble.ino)
+const NUS_SERVICE = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
+const NUS_RX      = "6e400002-b5a3-f393-e0a9-e50e24dcca9e"; // we WRITE here
+const NUS_TX      = "6e400003-b5a3-f393-e0a9-e50e24dcca9e"; // we get NOTIFY here
+
+const KEEPALIVE_MS = 300; // firmware auto-stops after 1s; resend while held
+
+let device = null, rxChar = null;
+let holdTimer = null;
+
+const statusEl   = document.getElementById("status");
+const connectBtn = document.getElementById("connectBtn");
+const disconnBtn = document.getElementById("disconnectBtn");
+const stopBtn    = document.getElementById("stopBtn");
+const speedEl    = document.getElementById("speed");
+const speedVal   = document.getElementById("speedVal");
+const controls   = document.querySelectorAll(".pad button, #stopBtn, #speed");
+
+function setStatus(text, cls = "") {
+  statusEl.textContent = text;
+  statusEl.className = cls;
+}
+
+function setConnected(connected) {
+  connectBtn.disabled = connected;
+  disconnBtn.disabled = !connected;
+  controls.forEach(el => { el.disabled = !connected; });
+}
+
+async function send(text) {
+  if (!rxChar) return;
+  try {
+    await rxChar.writeValueWithoutResponse(new TextEncoder().encode(text));
+  } catch (e) {
+    console.warn("write failed", e);
+  }
+}
+
+async function connect() {
+  if (!navigator.bluetooth) {
+    setStatus("Web Bluetooth unsupported", "err");
+    return;
+  }
+  try {
+    setStatus("scanning…");
+    device = await navigator.bluetooth.requestDevice({
+      filters: [{ name: "ESP32_RC_Car" }, { services: [NUS_SERVICE] }],
+      optionalServices: [NUS_SERVICE],
+    });
+    device.addEventListener("gattserverdisconnected", onDisconnected);
+
+    setStatus("connecting…");
+    const server = await device.gatt.connect();
+    const service = await server.getPrimaryService(NUS_SERVICE);
+    rxChar = await service.getCharacteristic(NUS_RX);
+
+    // Optional: listen for status notifications from the car.
+    try {
+      const txChar = await service.getCharacteristic(NUS_TX);
+      await txChar.startNotifications();
+      txChar.addEventListener("characteristicvaluechanged", e => {
+        console.log("car:", new TextDecoder().decode(e.target.value));
+      });
+    } catch (_) { /* TX is optional */ }
+
+    setConnected(true);
+    setStatus("connected", "on");
+    await send("V" + speedEl.value + "\n");
+  } catch (e) {
+    console.error(e);
+    setStatus("connect failed", "err");
+  }
+}
+
+function onDisconnected() {
+  stopHold();
+  rxChar = null;
+  setConnected(false);
+  setStatus("disconnected");
+}
+
+function disconnect() {
+  if (device && device.gatt.connected) device.gatt.disconnect();
+}
+
+// ----- drive button handling (hold-to-move with keep-alive resend) -----
+function startHold(cmd) {
+  send(cmd);
+  clearInterval(holdTimer);
+  holdTimer = setInterval(() => send(cmd), KEEPALIVE_MS);
+}
+
+function stopHold(releaseCmd) {
+  clearInterval(holdTimer);
+  holdTimer = null;
+  if (releaseCmd) send(releaseCmd);
+}
+
+document.querySelectorAll(".pad button").forEach(btn => {
+  const press = btn.dataset.press;     // command to send/repeat while held
+  const release = btn.dataset.release; // optional command on release
+  const tap = btn.dataset.tap;         // single command on tap (e.g. Center)
+
+  if (tap) {
+    btn.addEventListener("click", () => send(tap));
+    return;
+  }
+  if (!press) return;
+
+  const start = e => { e.preventDefault(); startHold(press); };
+  // Forward/Back release should stop the motors; steering returns to center.
+  const isDrive = press === "F" || press === "B";
+  const end = e => { e.preventDefault(); stopHold(isDrive ? "S" : (release || null)); };
+
+  btn.addEventListener("pointerdown", start);
+  btn.addEventListener("pointerup", end);
+  btn.addEventListener("pointercancel", end);
+  btn.addEventListener("pointerleave", end);
+});
+
+stopBtn.addEventListener("click", () => { stopHold(); send("S"); });
+
+speedEl.addEventListener("input", () => { speedVal.textContent = speedEl.value; });
+speedEl.addEventListener("change", () => send("V" + speedEl.value + "\n"));
+
+connectBtn.addEventListener("click", connect);
+disconnBtn.addEventListener("click", disconnect);
+</script>
+</body>
+</html>

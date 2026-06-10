@@ -1,0 +1,26 @@
+# Arduino / ESP32 build output
+build/
+*.bin
+*.elf
+*.hex
+*.map
+*.d
+*.o
+*.a
+
+# Arduino IDE / arduino-cli
+.build/
+*.tmp
+
+# PlatformIO (if the team migrates later)
+.pio/
+.pioenvs/
+.piolibdeps/
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+.vscode/
+.idea/

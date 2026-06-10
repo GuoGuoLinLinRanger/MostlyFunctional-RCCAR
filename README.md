@@ -70,6 +70,33 @@ Commands:
 
 For commands like `V160` and `A95`, send a newline after the command if your Bluetooth app supports it.
 
+## Optional: Phone Remote Control (Web Bluetooth)
+
+> This is **optional**. The default `src/main.ino` (Bluetooth Classic) already works
+> with any generic phone "Bluetooth terminal" app. Use this section only if you want
+> a touch-friendly on-screen remote with no app install.
+
+Phone *browsers* can only talk to **BLE**, not Bluetooth Classic, so the web remote
+needs the alternate BLE firmware. The two firmwares speak the exact same command
+protocol — **flash only one**:
+
+| Firmware | Radio | Drive it with |
+|---|---|---|
+| `src/main.ino` | Bluetooth Classic (SPP) | Generic BT terminal apps |
+| `src/main_ble.ino` | Bluetooth Low Energy (BLE) | The included web remote, `app/index.html` |
+
+To use the web remote:
+
+1. Flash `src/main_ble.ino` instead of `src/main.ino`.
+2. Open `app/index.html` in a **Web Bluetooth** browser — Android Chrome, or desktop
+   Chrome/Edge. (iOS Safari does **not** support Web Bluetooth.)
+3. Tap **Connect** and pick `ESP32_RC_Car`.
+4. **Hold** a direction button to drive (it auto-resends to beat the 1-second safety
+   timeout) and release to stop; use the slider for speed and **STOP** for an
+   immediate halt.
+
+You can open the file directly (`file://`) or serve it locally, e.g. `python -m http.server`.
+
 ## Safety Behavior
 
 The motors automatically stop after 1 second without receiving a command.
@@ -112,8 +139,12 @@ Recommended capacitor:
 ```text
 rc-car-esp32/
   README.md
+  LICENSE
   src/
-    main.ino
+    main.ino       # default firmware: Bluetooth Classic (SPP)
+    main_ble.ino   # optional firmware: BLE, for the web remote
+  app/
+    index.html     # optional Web Bluetooth phone remote
   docs/
     wiring-notes.md
     task-breakdown.md
@@ -121,7 +152,6 @@ rc-car-esp32/
 
 ## Future Improvements
 
-- Add custom phone app
 - Add smoother acceleration
 - Add battery voltage monitoring
 - Add ultrasonic sensor
