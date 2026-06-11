@@ -182,3 +182,7 @@ rc-car-esp32/
 - Add battery voltage monitoring
 - Add ultrasonic sensor
 - Add 3D printed enclosure
+
+## License
+
+Released under the MIT License. See [LICENSE](LICENSE) for details.
