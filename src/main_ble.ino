@@ -48,15 +48,15 @@ Servo steeringServo;
 // Keep these in sync with src/main.ino so wiring is identical either way.
 // Motor driver: L298N. MOTOR_A_PWM -> ENA, MOTOR_B_PWM -> ENB (remove the
 // ENA/ENB module jumpers so these GPIOs control speed). No standby pin.
-const int MOTOR_A_IN1 = 25; // L298N IN1
-const int MOTOR_A_IN2 = 26; // L298N IN2
-const int MOTOR_A_PWM = 27; // L298N ENA
+const int MOTOR_A_IN1 = 18; // L298N IN1
+const int MOTOR_A_IN2 = 21; // L298N IN2
+const int MOTOR_A_PWM = 4;  // L298N ENA
 
-const int MOTOR_B_IN1 = 32; // L298N IN3
-const int MOTOR_B_IN2 = 33; // L298N IN4
-const int MOTOR_B_PWM = 14; // L298N ENB
+const int MOTOR_B_IN1 = 33; // L298N IN3
+const int MOTOR_B_IN2 = 26; // L298N IN4
+const int MOTOR_B_PWM = 5;  // L298N ENB
 
-const int SERVO_PIN = 18;
+const int SERVO_PIN = 13;
 
 const int PWM_FREQ = 1000;
 const int PWM_RESOLUTION = 8; // 8-bit: 0 to 255

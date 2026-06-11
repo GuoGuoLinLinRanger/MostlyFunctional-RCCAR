@@ -41,12 +41,12 @@ L298N wiring:
 | +12V (VS) | Battery motor voltage |
 | +5V | Logic supply (see module jumper) |
 | GND | Common ground |
-| ENA | ESP32 GPIO 27 (remove ENA jumper) |
-| IN1 | ESP32 GPIO 25 |
-| IN2 | ESP32 GPIO 26 |
-| IN3 | ESP32 GPIO 32 |
-| IN4 | ESP32 GPIO 33 |
-| ENB | ESP32 GPIO 14 (remove ENB jumper) |
+| ENA | ESP32 GPIO 4 (remove ENA jumper) |
+| IN1 | ESP32 GPIO 18 |
+| IN2 | ESP32 GPIO 21 |
+| IN3 | ESP32 GPIO 33 |
+| IN4 | ESP32 GPIO 26 |
+| ENB | ESP32 GPIO 5 (remove ENB jumper) |
 | OUT1/OUT2 | Motor A rear motor |
 | OUT3/OUT4 | Motor B rear motor |
 
@@ -61,7 +61,7 @@ Typical servo wires:
 |---|---|
 | Red | 5V from buck converter |
 | Brown/Black | Common ground |
-| Orange/Yellow | ESP32 GPIO 18 |
+| Orange/Yellow | ESP32 GPIO 13 |
 
 Do not power the servo from the ESP32 3.3V pin.
 

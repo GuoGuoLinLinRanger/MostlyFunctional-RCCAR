@@ -42,22 +42,25 @@ In the Arduino IDE:
 
 | Function | ESP32 Pin |
 |---|---:|
-| Motor A IN1 | GPIO 25 |
-| Motor A IN2 | GPIO 26 |
-| Motor A PWM | GPIO 27 |
-| Motor B IN1 | GPIO 32 |
-| Motor B IN2 | GPIO 33 |
-| Motor B PWM | GPIO 14 |
-| Servo signal | GPIO 18 |
+| Motor A IN1 | GPIO 18 |
+| Motor A IN2 | GPIO 21 |
+| Motor A PWM | GPIO 4 |
+| Motor B IN1 | GPIO 33 |
+| Motor B IN2 | GPIO 26 |
+| Motor B PWM | GPIO 5 |
+| Servo signal | GPIO 13 |
+
+These match the project schematic (with IN1/IN2 moved off the input-only
+GPIO 34/35 to GPIO 18/21, and ENA/ENB added on GPIO 4/5).
 
 | L298N pin | ESP32 pin |
 |---|---:|
-| IN1 | GPIO 25 |
-| IN2 | GPIO 26 |
-| ENA | GPIO 27 |
-| IN3 | GPIO 32 |
-| IN4 | GPIO 33 |
-| ENB | GPIO 14 |
+| IN1 | GPIO 18 |
+| IN2 | GPIO 21 |
+| ENA | GPIO 4 |
+| IN3 | GPIO 33 |
+| IN4 | GPIO 26 |
+| ENB | GPIO 5 |
 
 Remove the ENA/ENB jumpers on the L298N module so the ESP32 can control speed
 via PWM. The L298N has no standby pin.

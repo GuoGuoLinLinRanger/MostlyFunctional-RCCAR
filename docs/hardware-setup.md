@@ -19,12 +19,12 @@ Connect these signal wires from the ESP32 pins to the L298N:
 
 | ESP32 pin | goes to L298N | what it does |
 |---|---|---|
-| GPIO 25 | IN1 | Motor A direction |
-| GPIO 26 | IN2 | Motor A direction |
-| GPIO 27 | ENA | Motor A speed (PWM) |
-| GPIO 32 | IN3 | Motor B direction |
-| GPIO 33 | IN4 | Motor B direction |
-| GPIO 14 | ENB | Motor B speed (PWM) |
+| GPIO 18 | IN1 | Motor A direction |
+| GPIO 21 | IN2 | Motor A direction |
+| GPIO 4  | ENA | Motor A speed (PWM) |
+| GPIO 33 | IN3 | Motor B direction |
+| GPIO 26 | IN4 | Motor B direction |
+| GPIO 5  | ENB | Motor B speed (PWM) |
 
 **Important:** the L298N usually ships with little plastic jumpers on the ENA
 and ENB pins. **Pull those two jumpers off.** If you leave them on, the motors
@@ -43,7 +43,7 @@ The servo has three wires:
 
 | Servo wire | Connect to |
 |---|---|
-| Orange / yellow (signal) | ESP32 GPIO 18 |
+| Orange / yellow (signal) | ESP32 GPIO 13 |
 | Red (power) | 5V supply (NOT the ESP32 3.3V pin) |
 | Brown / black (ground) | Common ground |
 

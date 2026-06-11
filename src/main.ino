@@ -36,18 +36,18 @@ const char* BLUETOOTH_NAME = "ESP32_RC_Car";
 // On the L298N the PWM pin is the EN (enable) input -- MOTOR_A_PWM -> ENA,
 // MOTOR_B_PWM -> ENB. Remove the ENA/ENB jumpers on the module so these GPIOs
 // actually control speed; left jumpered, the motors only run full-on/off.
-const int MOTOR_A_IN1 = 25; // L298N IN1
-const int MOTOR_A_IN2 = 26; // L298N IN2
-const int MOTOR_A_PWM = 27; // L298N ENA
+const int MOTOR_A_IN1 = 18; // L298N IN1
+const int MOTOR_A_IN2 = 21; // L298N IN2
+const int MOTOR_A_PWM = 4;  // L298N ENA
 
-const int MOTOR_B_IN1 = 32; // L298N IN3
-const int MOTOR_B_IN2 = 33; // L298N IN4
-const int MOTOR_B_PWM = 14; // L298N ENB
+const int MOTOR_B_IN1 = 33; // L298N IN3
+const int MOTOR_B_IN2 = 26; // L298N IN4
+const int MOTOR_B_PWM = 5;  // L298N ENB
 
 // The L298N has no standby pin (unlike the TB6612FNG), so none is used.
 
 // Servo pin
-const int SERVO_PIN = 18;
+const int SERVO_PIN = 13;
 
 // PWM settings for ESP32 motors
 const int PWM_FREQ = 1000;
