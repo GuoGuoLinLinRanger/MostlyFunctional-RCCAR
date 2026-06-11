@@ -1,11 +1,11 @@
 /*
   OPTIONAL — ESP32 BLE RC Car firmware
 
-  This is an ALTERNATIVE to src/main.ino. Flash only ONE firmware to the board.
+  This is an ALTERNATIVE to firmware/rc_car_classic. Flash only ONE firmware.
 
-    src/main.ino      -> Bluetooth Classic (SPP). Works with generic phone
-                         "Bluetooth terminal" apps.
-    src/main_ble.ino  -> Bluetooth Low Energy (BLE), Nordic UART Service.
+    rc_car_classic -> Bluetooth Classic (SPP). Works with generic phone
+                      "Bluetooth terminal" apps.
+    rc_car_ble     -> Bluetooth Low Energy (BLE), Nordic UART Service.
                          Works with the included web controller (app/index.html)
                          in any Web Bluetooth browser: Android Chrome, desktop
                          Chrome/Edge. NOTE: iOS Safari does NOT support Web
@@ -45,7 +45,7 @@ bool deviceConnected = false;
 Servo steeringServo;
 
 // ========================== PROJECT CONFIG ==========================
-// Keep these in sync with src/main.ino so wiring is identical either way.
+// Keep these in sync with rc_car_classic so wiring is identical either way.
 // Motor driver: L298N. MOTOR_A_PWM -> ENA, MOTOR_B_PWM -> ENB (remove the
 // ENA/ENB module jumpers so these GPIOs control speed). No standby pin.
 const int MOTOR_A_IN1 = 18; // L298N IN1

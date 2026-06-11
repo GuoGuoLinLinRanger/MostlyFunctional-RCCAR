@@ -69,7 +69,7 @@ If the ESP32 randomly restarts when the motors kick in, add a large capacitor
 1. Install the Arduino IDE.
 2. In Boards Manager, install **esp32 by Espressif**.
 3. In Library Manager, install **ESP32Servo**.
-4. Open `src/main.ino`.
+4. Open `firmware/rc_car_classic/rc_car_classic.ino`.
 5. Pick the board "ESP32 Dev Module" and the right COM port, then click Upload.
 
 ## Step 5 — Drive it

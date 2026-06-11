@@ -29,14 +29,16 @@ the L298N inputs — keep motor pins off those.
 ## Build Requirements
 
 > New to the hardware? Start with [docs/hardware-setup.md](docs/hardware-setup.md)
-> for a plain-English wiring and setup checklist.
+> for a plain-English wiring checklist, then
+> [docs/flashing-and-control.md](docs/flashing-and-control.md) to upload the code
+> and drive the car.
 
 In the Arduino IDE:
 
 1. Install **ESP32 board support** via Boards Manager (search "esp32" by Espressif). Both core 2.x and 3.x are supported by this sketch.
 2. Install the **ESP32Servo** library via Library Manager.
 3. `BluetoothSerial` ships with the ESP32 board package — no separate install needed.
-4. Select an ESP32 board that supports classic Bluetooth (the original ESP32, not S2/S3/C3) and the correct serial port, then upload `src/main.ino`.
+4. Select an ESP32 board that supports classic Bluetooth (the original ESP32, not S2/S3/C3) and the correct serial port, then open and upload `firmware/rc_car_classic/rc_car_classic.ino`.
 
 ## Pin Assignment
 
@@ -90,9 +92,9 @@ For commands like `V160` and `A95`, send a newline after the command if your Blu
 
 ## Optional: Phone Remote Control (Web Bluetooth)
 
-> This is **optional**. The default `src/main.ino` (Bluetooth Classic) already works
-> with any generic phone "Bluetooth terminal" app. Use this section only if you want
-> a touch-friendly on-screen remote with no app install.
+> This is **optional**. The default `firmware/rc_car_classic` (Bluetooth Classic)
+> already works with any generic phone "Bluetooth terminal" app. Use this section
+> only if you want a touch-friendly on-screen remote with no app install.
 
 Phone *browsers* can only talk to **BLE**, not Bluetooth Classic, so the web remote
 needs the alternate BLE firmware. The two firmwares speak the exact same command
@@ -100,12 +102,12 @@ protocol — **flash only one**:
 
 | Firmware | Radio | Drive it with |
 |---|---|---|
-| `src/main.ino` | Bluetooth Classic (SPP) | Generic BT terminal apps |
-| `src/main_ble.ino` | Bluetooth Low Energy (BLE) | The included web remote, `app/index.html` |
+| `firmware/rc_car_classic` | Bluetooth Classic (SPP) | Generic BT terminal apps |
+| `firmware/rc_car_ble` | Bluetooth Low Energy (BLE) | The included web remote, `app/index.html` |
 
 To use the web remote:
 
-1. Flash `src/main_ble.ino` instead of `src/main.ino`.
+1. Flash `firmware/rc_car_ble/rc_car_ble.ino` instead of the classic sketch.
 2. Open `app/index.html` in a **Web Bluetooth** browser — Android Chrome, or desktop
    Chrome/Edge. (iOS Safari does **not** support Web Bluetooth.)
 3. Tap **Connect** and pick `ESP32_RC_Car`.
@@ -158,13 +160,18 @@ Recommended capacitor:
 rc-car-esp32/
   README.md
   LICENSE
-  src/
-    main.ino       # default firmware: Bluetooth Classic (SPP)
-    main_ble.ino   # optional firmware: BLE, for the web remote
+  firmware/
+    rc_car_classic/
+      rc_car_classic.ino   # default firmware: Bluetooth Classic (SPP)
+    rc_car_ble/
+      rc_car_ble.ino       # optional firmware: BLE, for the web remote
   app/
     index.html     # optional Web Bluetooth phone remote
+  hardware/
+    rc-car.kicad_sch   # KiCad schematic
   docs/
-    hardware-setup.md   # plain-English wiring + setup checklist
+    hardware-setup.md       # plain-English wiring + setup checklist
+    flashing-and-control.md # upload the code and drive the car
     wiring-notes.md
     task-breakdown.md
 ```
