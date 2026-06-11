@@ -1,9 +1,13 @@
 /*
   ESP32 Bluetooth RC Car
   Architecture:
-  - Rear-wheel drive using a TB6612FNG-style dual motor driver
+  - Rear-wheel drive using an L298N dual motor driver
   - Front-wheel steering using a servo
   - Phone control over Bluetooth Serial
+
+  Board: original ESP32 (WROOM-32, CP2102 USB). Classic Bluetooth is supported,
+  so this sketch runs as-is. Do NOT use GPIO 34/35/36/39 for outputs on this
+  chip -- they are input-only.
 
   Commands:
     F       -> move forward at current speed
@@ -28,18 +32,19 @@ Servo steeringServo;
 // ========================== PROJECT CONFIG ==========================
 const char* BLUETOOTH_NAME = "ESP32_RC_Car";
 
-// Motor driver assumptions: TB6612FNG-style driver
-// You can modify these pins later based on wiring.
-const int MOTOR_A_IN1 = 25;
-const int MOTOR_A_IN2 = 26;
-const int MOTOR_A_PWM = 27;
+// Motor driver: L298N. Each motor uses two direction pins plus one PWM pin.
+// On the L298N the PWM pin is the EN (enable) input -- MOTOR_A_PWM -> ENA,
+// MOTOR_B_PWM -> ENB. Remove the ENA/ENB jumpers on the module so these GPIOs
+// actually control speed; left jumpered, the motors only run full-on/off.
+const int MOTOR_A_IN1 = 25; // L298N IN1
+const int MOTOR_A_IN2 = 26; // L298N IN2
+const int MOTOR_A_PWM = 27; // L298N ENA
 
-const int MOTOR_B_IN1 = 32;
-const int MOTOR_B_IN2 = 33;
-const int MOTOR_B_PWM = 14;
+const int MOTOR_B_IN1 = 32; // L298N IN3
+const int MOTOR_B_IN2 = 33; // L298N IN4
+const int MOTOR_B_PWM = 14; // L298N ENB
 
-// TB6612FNG has a standby pin. If your driver does not have STBY, ignore this.
-const int MOTOR_STBY = 13;
+// The L298N has no standby pin (unlike the TB6612FNG), so none is used.
 
 // Servo pin
 const int SERVO_PIN = 18;
@@ -99,9 +104,6 @@ void setupMotorPins() {
   pinMode(MOTOR_A_IN2, OUTPUT);
   pinMode(MOTOR_B_IN1, OUTPUT);
   pinMode(MOTOR_B_IN2, OUTPUT);
-  pinMode(MOTOR_STBY, OUTPUT);
-
-  digitalWrite(MOTOR_STBY, HIGH); // enable TB6612FNG
 }
 
 void setupPWM() {

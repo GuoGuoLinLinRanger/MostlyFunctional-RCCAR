@@ -15,17 +15,21 @@ A small rear-wheel-drive RC car project using an ESP32, a motor driver, rear DC 
 
 This code assumes the following setup:
 
-- ESP32 development board
-- TB6612FNG-style dual motor driver
+- Original ESP32 development board (WROOM-32, CP2102 USB) — has Classic Bluetooth
+- L298N dual motor driver
 - Two rear DC motors
 - One steering servo, such as SG90 or MG90S
-- 2x18650 battery pack
-- 5V buck converter for ESP32 and servo power
+- Battery pack for motor power
+- 3.3V/5V supply for the ESP32 and servo
 - Common ground between all parts
 
-If your team uses L298N instead of TB6612FNG, the code can be adapted later.
+Note: GPIO 34/35/36/39 on the original ESP32 are input-only and cannot drive
+the L298N inputs — keep motor pins off those.
 
 ## Build Requirements
+
+> New to the hardware? Start with [docs/hardware-setup.md](docs/hardware-setup.md)
+> for a plain-English wiring and setup checklist.
 
 In the Arduino IDE:
 
@@ -44,8 +48,19 @@ In the Arduino IDE:
 | Motor B IN1 | GPIO 32 |
 | Motor B IN2 | GPIO 33 |
 | Motor B PWM | GPIO 14 |
-| Motor driver STBY | GPIO 13 |
 | Servo signal | GPIO 18 |
+
+| L298N pin | ESP32 pin |
+|---|---:|
+| IN1 | GPIO 25 |
+| IN2 | GPIO 26 |
+| ENA | GPIO 27 |
+| IN3 | GPIO 32 |
+| IN4 | GPIO 33 |
+| ENB | GPIO 14 |
+
+Remove the ENA/ENB jumpers on the L298N module so the ESP32 can control speed
+via PWM. The L298N has no standby pin.
 
 ## Bluetooth Commands
 
@@ -146,6 +161,7 @@ rc-car-esp32/
   app/
     index.html     # optional Web Bluetooth phone remote
   docs/
+    hardware-setup.md   # plain-English wiring + setup checklist
     wiring-notes.md
     task-breakdown.md
 ```

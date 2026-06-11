@@ -46,15 +46,15 @@ Servo steeringServo;
 
 // ========================== PROJECT CONFIG ==========================
 // Keep these in sync with src/main.ino so wiring is identical either way.
-const int MOTOR_A_IN1 = 25;
-const int MOTOR_A_IN2 = 26;
-const int MOTOR_A_PWM = 27;
+// Motor driver: L298N. MOTOR_A_PWM -> ENA, MOTOR_B_PWM -> ENB (remove the
+// ENA/ENB module jumpers so these GPIOs control speed). No standby pin.
+const int MOTOR_A_IN1 = 25; // L298N IN1
+const int MOTOR_A_IN2 = 26; // L298N IN2
+const int MOTOR_A_PWM = 27; // L298N ENA
 
-const int MOTOR_B_IN1 = 32;
-const int MOTOR_B_IN2 = 33;
-const int MOTOR_B_PWM = 14;
-
-const int MOTOR_STBY = 13;
+const int MOTOR_B_IN1 = 32; // L298N IN3
+const int MOTOR_B_IN2 = 33; // L298N IN4
+const int MOTOR_B_PWM = 14; // L298N ENB
 
 const int SERVO_PIN = 18;
 
@@ -138,9 +138,6 @@ void setupMotorPins() {
   pinMode(MOTOR_A_IN2, OUTPUT);
   pinMode(MOTOR_B_IN1, OUTPUT);
   pinMode(MOTOR_B_IN2, OUTPUT);
-  pinMode(MOTOR_STBY, OUTPUT);
-
-  digitalWrite(MOTOR_STBY, HIGH); // enable TB6612FNG
 }
 
 void setupPWM() {
