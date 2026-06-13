@@ -85,6 +85,50 @@ The servo's signal goes to GPIO 13, but its **+ and – go to the 5V rail**, nev
 - `TXD0` / `RXD0` (GPIO 1 / 3) — the USB serial; wiring to them breaks upload and Serial Monitor.
 - `IO0`, `IO2`, `IO12`, `IO15` — boot/strapping pins; leave them free.
 
+## Wiring, Step by Step
+
+Do this with **everything powered off** — no USB, no battery connected — until
+the last step. Pin labels are those printed on the WROOM-32 dev module.
+
+1. **Ground first (common ground).** Connect a ground wire between the ESP32
+   `GND`, the L298N `GND`, the battery `–`, and the 5V buck converter `GND` so
+   they all share one ground. Nothing works without this.
+2. **ESP32 → L298N signal wires** (these can run on the breadboard):
+   - ESP32 `IO18` → L298N `IN1`
+   - ESP32 `IO21` → L298N `IN2`
+   - ESP32 `IO4`  → L298N `ENA`
+   - ESP32 `IO33` → L298N `IN3`
+   - ESP32 `IO26` → L298N `IN4`
+   - ESP32 `IO5`  → L298N `ENB`
+3. **Remove the L298N `ENA` and `ENB` jumpers** so the ESP32's PWM controls
+   speed. (Leaving them on locks the motors at full speed.)
+4. **Motors → L298N outputs** (screw terminals, not the breadboard):
+   - Motor A → `OUT1` and `OUT2`
+   - Motor B → `OUT3` and `OUT4`
+   - (If a motor runs backwards later, just swap its two wires here.)
+5. **Battery → L298N motor power** (screw terminals):
+   - Battery `+` → L298N `+12V` (`VS`)
+   - Battery `–` → L298N `GND` (already on the common ground from step 1)
+   - If the battery is **over 12V**, also remove the L298N 5V jumper and feed it
+     5V separately; up to 12V the onboard regulator is fine.
+6. **5V buck converter → ESP32 power:**
+   - Buck `5V out` → ESP32 `5V` / `VIN`
+   - Buck `GND` → common ground (step 1)
+   - Leave the ESP32 `3V3` pin unconnected — it is an output, not an input.
+7. **Servo (3 wires):**
+   - Servo **signal** → ESP32 `IO13`
+   - Servo `+` → **5V rail** (the buck output), *not* `3V3`
+   - Servo `–` → common ground
+8. **Double-check before power:** grounds all tied together, no wire on
+   `IO34/IO35/VP/VN` or `TXD0/RXD0`, motors on the screw terminals, `ENA/ENB`
+   jumpers removed.
+9. **Now power up:** connect the 5V supply and the battery, then plug the ESP32
+   into USB to flash it (see [docs/flashing-and-control.md](docs/flashing-and-control.md)).
+
+> First test with the **wheels off the ground** and in order: servo, then one
+> motor, then both, then drive + steering. See the Recommended Testing Order
+> below.
+
 ## Bluetooth Commands
 
 Use a Bluetooth terminal app on your phone and connect to:
