@@ -3,6 +3,28 @@
 You've built the circuit. This is how you get the code onto the ESP32 and drive
 the car. Plan on about 15 minutes the first time.
 
+## Wiring quick reference
+
+The code expects these exact pins — wire the ESP32 to match (labels are those
+printed on the WROOM-32 dev module):
+
+| ESP32 pin | Connect to | Purpose |
+|---|---|---|
+| IO18 | L298N IN1 | Motor A direction |
+| IO21 | L298N IN2 | Motor A direction |
+| IO4 | L298N ENA | Motor A speed (PWM) |
+| IO33 | L298N IN3 | Motor B direction |
+| IO26 | L298N IN4 | Motor B direction |
+| IO5 | L298N ENB | Motor B speed (PWM) |
+| IO13 | Servo signal | Steering |
+| 5V / VIN | 5V buck output | Powers the ESP32 |
+| GND | Common ground | Tie ESP32 + L298N + battery + 5V supply together |
+
+Motor power (battery → L298N `+12V`/`GND`, motors → `OUT1/2` and `OUT3/4`) and
+the servo's `+`/`–` (to the 5V rail) are **not** run through the ESP32. Remove
+the L298N `ENA`/`ENB` jumpers so the PWM pins control speed. Don't wire anything
+to the input-only pins (IO34/IO35/VP/VN) or the USB serial pins (TXD0/RXD0).
+
 ## Step 1 — Install the Arduino IDE
 
 Download and install it from <https://www.arduino.cc/en/software>. Open it once

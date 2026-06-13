@@ -67,6 +67,24 @@ GPIO 34/35 to GPIO 18/21, and ENA/ENB added on GPIO 4/5).
 Remove the ENA/ENB jumpers on the L298N module so the ESP32 can control speed
 via PWM. The L298N has no standby pin.
 
+### Power and ground
+
+These pins use the labels printed on the WROOM-32 dev module:
+
+| Module pin | Connect to |
+|---|---|
+| `5V` / `VIN` (a.k.a. `EXT_5V`) | Regulated **5V** from the buck converter — powers the ESP32 |
+| `GND` (any of `GND1`/`GND2`/`GND3`) | **Common ground** — tie ESP32, L298N, battery, and 5V supply together |
+| `3V3` | Leave unconnected — it's a **3.3V output**, not a power input |
+
+The servo's signal goes to GPIO 13, but its **+ and – go to the 5V rail**, never 3V3.
+
+### Pins to keep free
+
+- `IO34`, `IO35`, `SENSOR_VP` (GPIO 36), `SENSOR_VN` (GPIO 39) — **input-only**, cannot drive the L298N.
+- `TXD0` / `RXD0` (GPIO 1 / 3) — the USB serial; wiring to them breaks upload and Serial Monitor.
+- `IO0`, `IO2`, `IO12`, `IO15` — boot/strapping pins; leave them free.
+
 ## Bluetooth Commands
 
 Use a Bluetooth terminal app on your phone and connect to:
