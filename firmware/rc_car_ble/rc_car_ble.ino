@@ -1,11 +1,11 @@
 /*
   OPTIONAL — ESP32 BLE RC Car firmware
 
-  This is an ALTERNATIVE to src/main.ino. Flash only ONE firmware to the board.
+  This is an ALTERNATIVE to firmware/rc_car_classic. Flash only ONE firmware.
 
-    src/main.ino      -> Bluetooth Classic (SPP). Works with generic phone
-                         "Bluetooth terminal" apps.
-    src/main_ble.ino  -> Bluetooth Low Energy (BLE), Nordic UART Service.
+    rc_car_classic -> Bluetooth Classic (SPP). Works with generic phone
+                      "Bluetooth terminal" apps.
+    rc_car_ble     -> Bluetooth Low Energy (BLE), Nordic UART Service.
                          Works with the included web controller (app/index.html)
                          in any Web Bluetooth browser: Android Chrome, desktop
                          Chrome/Edge. NOTE: iOS Safari does NOT support Web
@@ -45,18 +45,18 @@ bool deviceConnected = false;
 Servo steeringServo;
 
 // ========================== PROJECT CONFIG ==========================
-// Keep these in sync with src/main.ino so wiring is identical either way.
-const int MOTOR_A_IN1 = 25;
-const int MOTOR_A_IN2 = 26;
-const int MOTOR_A_PWM = 27;
+// Keep these in sync with rc_car_classic so wiring is identical either way.
+// Motor driver: L298N. MOTOR_A_PWM -> ENA, MOTOR_B_PWM -> ENB (remove the
+// ENA/ENB module jumpers so these GPIOs control speed). No standby pin.
+const int MOTOR_A_IN1 = 18; // L298N IN1
+const int MOTOR_A_IN2 = 21; // L298N IN2
+const int MOTOR_A_PWM = 4;  // L298N ENA
 
-const int MOTOR_B_IN1 = 32;
-const int MOTOR_B_IN2 = 33;
-const int MOTOR_B_PWM = 14;
+const int MOTOR_B_IN1 = 33; // L298N IN3
+const int MOTOR_B_IN2 = 26; // L298N IN4
+const int MOTOR_B_PWM = 5;  // L298N ENB
 
-const int MOTOR_STBY = 13;
-
-const int SERVO_PIN = 18;
+const int SERVO_PIN = 13;
 
 const int PWM_FREQ = 1000;
 const int PWM_RESOLUTION = 8; // 8-bit: 0 to 255
@@ -138,9 +138,6 @@ void setupMotorPins() {
   pinMode(MOTOR_A_IN2, OUTPUT);
   pinMode(MOTOR_B_IN1, OUTPUT);
   pinMode(MOTOR_B_IN2, OUTPUT);
-  pinMode(MOTOR_STBY, OUTPUT);
-
-  digitalWrite(MOTOR_STBY, HIGH); // enable TB6612FNG
 }
 
 void setupPWM() {

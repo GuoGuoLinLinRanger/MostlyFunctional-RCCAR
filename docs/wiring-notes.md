@@ -34,22 +34,24 @@ Battery GND = motor driver GND = buck converter GND = ESP32 GND = servo GND
 
 ## Motor Driver Pins
 
-Assumed TB6612FNG-style wiring:
+L298N wiring:
 
 | Motor Driver Pin | Connects To |
 |---|---|
-| VM | Battery motor voltage |
-| VCC | ESP32 3.3V logic |
+| +12V (VS) | Battery motor voltage |
+| +5V | Logic supply (see module jumper) |
 | GND | Common ground |
-| STBY | ESP32 GPIO 13 |
-| AIN1 | ESP32 GPIO 25 |
-| AIN2 | ESP32 GPIO 26 |
-| PWMA | ESP32 GPIO 27 |
-| BIN1 | ESP32 GPIO 32 |
-| BIN2 | ESP32 GPIO 33 |
-| PWMB | ESP32 GPIO 14 |
-| AO1/AO2 | Left or Motor A rear motor |
-| BO1/BO2 | Right or Motor B rear motor |
+| ENA | ESP32 GPIO 4 (remove ENA jumper) |
+| IN1 | ESP32 GPIO 18 |
+| IN2 | ESP32 GPIO 21 |
+| IN3 | ESP32 GPIO 33 |
+| IN4 | ESP32 GPIO 26 |
+| ENB | ESP32 GPIO 5 (remove ENB jumper) |
+| OUT1/OUT2 | Motor A rear motor |
+| OUT3/OUT4 | Motor B rear motor |
+
+The L298N has no standby pin. Remove the ENA/ENB jumpers so the ESP32 PWM
+signals control motor speed; if left jumpered to +5V the motors only run full-on.
 
 ## Servo Wiring
 
@@ -59,7 +61,7 @@ Typical servo wires:
 |---|---|
 | Red | 5V from buck converter |
 | Brown/Black | Common ground |
-| Orange/Yellow | ESP32 GPIO 18 |
+| Orange/Yellow | ESP32 GPIO 13 |
 
 Do not power the servo from the ESP32 3.3V pin.
 
