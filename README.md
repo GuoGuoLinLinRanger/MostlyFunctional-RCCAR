@@ -11,6 +11,19 @@ A small rear-wheel-drive RC car project using an ESP32, a motor driver, rear DC 
 - Support adjustable servo angles
 - Stop automatically if the Bluetooth signal stops sending commands
 
+## To-do list after Saturday, June 13 meeting
+
+- [] Shrink the gap of the knucles to perfect fit
+- [] Elongate the knuckles to restrain the tilting of the wheels
+- [] Decrease the length of the axle joints
+- [] Decrease the length of the back connecting rod
+- [] Increase the diameter of the back connecting rod's gap
+- [] Change the dimensions for the motor (height, tail, length)
+- [] Increase the print quality of the back connecting rod
+- [] Print servo mount
+- [] Print electronics holder
+- [x] Design something that guides and holds the rack
+
 ## Assumed Hardware
 
 This code assumes the following setup:
