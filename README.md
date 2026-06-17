@@ -13,9 +13,9 @@ A small rear-wheel-drive RC car project using an ESP32, a motor driver, rear DC 
 
 ## To-do list after Saturday, June 13 meeting
 
-- [ ] Shrink the gap of the knucles to perfect fit
-- [ ] Elongate the knuckles to restrain the tilting of the wheels
-- [ ] Decrease the length of the axle joints
+- [x] Shrink the gap of the knucles to perfect fit
+- [x] Elongate the knuckles to restrain the tilting of the wheels
+- [x] Decrease the length of the axle joints
 - [ ] Decrease the length of the back connecting rod
 - [x] Increase the diameter of the back connecting rod's gap
 - [x] Change the dimensions for the motor (height, tail, length)
