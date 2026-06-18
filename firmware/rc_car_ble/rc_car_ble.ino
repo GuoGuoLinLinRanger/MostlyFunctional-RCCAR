@@ -60,10 +60,10 @@ const int SERVO_PIN = 13;
 
 const int PWM_FREQ = 1000;
 const int PWM_RESOLUTION = 8; // 8-bit: 0 to 255
-const int PWM_CHANNEL_A = 0;
-const int PWM_CHANNEL_B = 1;
+const int PWM_CHANNEL_A = 2;
+const int PWM_CHANNEL_B = 3;
 
-int currentSpeed = 150; // 0 to 255
+int currentSpeed = 255; // 0 to 255
 const int MIN_SPEED = 0;
 const int MAX_SPEED = 255;
 
@@ -111,8 +111,9 @@ void setup() {
   Serial.begin(115200);
 
   setupMotorPins();
-  setupPWM();
   setupServo();
+  setupPWM();
+  
 
   stopMotors();
   centerSteering();
