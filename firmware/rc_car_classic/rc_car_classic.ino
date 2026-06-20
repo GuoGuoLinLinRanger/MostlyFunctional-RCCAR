@@ -62,8 +62,8 @@ const int MAX_SPEED = 255;
 
 // Steering calibration. Modify these after testing your physical steering.
 int centerAngle = 90;
-int leftAngle = 60;
-int rightAngle = 120;
+int leftAngle = 30;
+int rightAngle = 150;
 
 // Safety timeout
 const unsigned long AUTO_STOP_MS = 1000;
