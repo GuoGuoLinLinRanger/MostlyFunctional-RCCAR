@@ -9,18 +9,30 @@
   so this sketch runs as-is. Do NOT use GPIO 34/35/36/39 for outputs on this
   chip -- they are input-only.
 
-  Commands:
-    F       -> move forward at current speed
-    B       -> move backward at current speed
-    S       -> stop motors
-    L       -> steer left using current left angle
-    R       -> steer right using current right angle
-    C       -> center steering
-    V<number> -> set motor speed from 0 to 255, example: V160
-    A<number> -> set servo angle directly from 0 to 180, example: A95
+  Commands (each is a single character unless noted):
+    F        -> drive forward at current speed   (latches: keeps going until S)
+    B        -> drive backward at current speed   (latches)
+    S        -> stop motors
+    L        -> steer a step further left
+    R        -> steer a step further right
+    C        -> center steering
+    +        -> speed up one step  (great for a "speed ++" terminal macro)
+    -        -> slow down one step  (great for a "speed --" macro)
+    V<number> -> set motor speed 0..255, needs a newline, example: V160
+    A<number> -> set servo angle 0..180, needs a newline, example: A95
 
-  Safety:
-    If no command is received for AUTO_STOP_MS, motors stop automatically.
+  Why "+/-" and not just V<number>?  A phone terminal sends a macro's text once
+  per tap and usually does NOT append a newline, so "V160" alone never gets
+  parsed. The single-char +/- steppers work no matter how line-endings are set,
+  and they're floored at MIN_DRIVE_SPEED so "slow down" can't drop the car below
+  the point where the motors stall.
+
+  Drive model:
+    Movement LATCHES -- one tap of F/B keeps the car moving until you tap S
+    (a terminal can't stream a command while you hold a button, so this avoids
+    the "tap forward repeatedly" problem). Safety: the motors stop automatically
+    if the Bluetooth client disconnects. The old time-based auto-stop is off by
+    default (AUTO_STOP_MS = 0); set it to e.g. 1500 to re-enable a watchdog.
 */
 
 #include "BluetoothSerial.h"
@@ -55,20 +67,30 @@ const int PWM_RESOLUTION = 8; // 8-bit: 0 to 255
 const int PWM_CHANNEL_A = 0;
 const int PWM_CHANNEL_B = 1;
 
-// Default motion settings
-int currentSpeed = 150; // 0 to 255. Start conservative.
+// Speed settings (0..255). Starts at full speed; tune down with +/- or V<number>.
+int currentSpeed = 255;
 const int MIN_SPEED = 0;
 const int MAX_SPEED = 255;
+const int SPEED_STEP = 25;       // how much +/- changes speed per tap
+const int MIN_DRIVE_SPEED = 110; // +/- won't drop below this (motors stall lower)
 
 // Steering calibration. Modify these after testing your physical steering.
 int centerAngle = 90;
-int leftAngle = 30;
-int rightAngle = 150;
+int leftAngle = 30;   // full-left servo angle (smaller = more left)
+int rightAngle = 150; // full-right servo angle (larger = more right)
+int currentAngle = 90;
+const int STEER_STEP = 15; // degrees per L/R tap
 
-// Safety timeout
-const unsigned long AUTO_STOP_MS = 1000;
+// Drive direction so +/- can re-apply the new speed while moving.
+const int DIR_STOP = 0, DIR_FORWARD = 1, DIR_BACKWARD = -1;
+int driveDir = DIR_STOP;
+
+// Safety. AUTO_STOP_MS = 0 disables the time-based watchdog; we instead stop the
+// car the moment the Bluetooth client disconnects (see handleConnectionSafety).
+const unsigned long AUTO_STOP_MS = 0;
 unsigned long lastCommandTime = 0;
 bool motorsRunning = false;
+bool wasConnected = false;
 
 // Input buffer for commands like V160 or A95
 String inputBuffer = "";
@@ -89,13 +111,14 @@ void setup() {
 
   Serial.println("RC car ready.");
   Serial.println("Pair with Bluetooth device: " + String(BLUETOOTH_NAME));
-  Serial.println("Commands: F, B, S, L, R, C, V<number>, A<number>");
+  Serial.println("Commands: F, B, S, L, R, C, +, -, V<number>, A<number>");
 }
 
 // ========================== MAIN LOOP ==========================
 void loop() {
   readBluetoothCommands();
-  handleAutoStop();
+  handleConnectionSafety();
+  if (AUTO_STOP_MS > 0) handleAutoStop();
 }
 
 // ========================== INITIALIZATION ==========================
@@ -145,7 +168,7 @@ void readBluetoothCommands() {
     if (incomingChar == '\n' || incomingChar == '\r') {
       processBufferedCommand();
       inputBuffer = "";
-      return;
+      continue;
     }
 
     if (isSingleCharCommand(incomingChar)) {
@@ -165,7 +188,8 @@ void readBluetoothCommands() {
 bool isSingleCharCommand(char command) {
   command = toupper(command);
   return command == 'F' || command == 'B' || command == 'S' ||
-         command == 'L' || command == 'R' || command == 'C';
+         command == 'L' || command == 'R' || command == 'C' ||
+         command == '+' || command == '-';
 }
 
 void processSingleCharCommand(char command) {
@@ -183,13 +207,19 @@ void processSingleCharCommand(char command) {
       stopMotors();
       break;
     case 'L':
-      steerLeft();
+      steerBy(-STEER_STEP); // lower angle = more left
       break;
     case 'R':
-      steerRight();
+      steerBy(+STEER_STEP); // higher angle = more right
       break;
     case 'C':
       centerSteering();
+      break;
+    case '+':
+      changeSpeed(+SPEED_STEP);
+      break;
+    case '-':
+      changeSpeed(-SPEED_STEP);
       break;
     default:
       Serial.println("Unknown single-character command.");
@@ -232,6 +262,7 @@ void moveForward(int speedValue) {
   writeMotorPWM(MOTOR_A_PWM, PWM_CHANNEL_A, speedValue);
   writeMotorPWM(MOTOR_B_PWM, PWM_CHANNEL_B, speedValue);
 
+  driveDir = DIR_FORWARD;
   motorsRunning = speedValue > 0;
   Serial.println("Moving forward at speed " + String(speedValue));
 }
@@ -247,6 +278,7 @@ void moveBackward(int speedValue) {
   writeMotorPWM(MOTOR_A_PWM, PWM_CHANNEL_A, speedValue);
   writeMotorPWM(MOTOR_B_PWM, PWM_CHANNEL_B, speedValue);
 
+  driveDir = DIR_BACKWARD;
   motorsRunning = speedValue > 0;
   Serial.println("Moving backward at speed " + String(speedValue));
 }
@@ -260,24 +292,40 @@ void stopMotors() {
   digitalWrite(MOTOR_B_IN1, LOW);
   digitalWrite(MOTOR_B_IN2, LOW);
 
+  driveDir = DIR_STOP;
   motorsRunning = false;
   Serial.println("Motors stopped.");
 }
 
+// Absolute speed (from V<number>). Allows the full 0..255 range.
 void setSpeed(int newSpeed) {
   currentSpeed = constrain(newSpeed, MIN_SPEED, MAX_SPEED);
+  reapplyDriveSpeed();
   Serial.println("Speed set to " + String(currentSpeed));
 }
 
-// ========================== STEERING CONTROL ==========================
-void steerLeft() {
-  setSteeringAngle(leftAngle);
-  Serial.println("Steering left.");
+// Relative speed step (from +/-). Floored at MIN_DRIVE_SPEED so a "slow down"
+// tap can never leave the car too weak to move; use S or V0 to truly stop.
+void changeSpeed(int delta) {
+  currentSpeed = constrain(currentSpeed + delta, MIN_DRIVE_SPEED, MAX_SPEED);
+  reapplyDriveSpeed();
+  Serial.println("Speed -> " + String(currentSpeed));
 }
 
-void steerRight() {
-  setSteeringAngle(rightAngle);
-  Serial.println("Steering right.");
+// If we're already driving, push the new speed to the motors immediately.
+void reapplyDriveSpeed() {
+  if (driveDir == DIR_FORWARD)       moveForward(currentSpeed);
+  else if (driveDir == DIR_BACKWARD) moveBackward(currentSpeed);
+}
+
+// ========================== STEERING CONTROL ==========================
+// Step the steering relative to where it is now (finer than slamming L/R to the
+// limits). Clamped to the calibrated left/right range.
+void steerBy(int deltaDegrees) {
+  int lo = min(leftAngle, rightAngle);
+  int hi = max(leftAngle, rightAngle);
+  int target = constrain(currentAngle + deltaDegrees, lo, hi);
+  setSteeringAngle(target);
 }
 
 void centerSteering() {
@@ -286,12 +334,24 @@ void centerSteering() {
 }
 
 void setSteeringAngle(int angle) {
-  angle = constrain(angle, 0, 180);
-  steeringServo.write(angle);
-  Serial.println("Servo angle set to " + String(angle));
+  currentAngle = constrain(angle, 0, 180);
+  steeringServo.write(currentAngle);
+  Serial.println("Servo angle set to " + String(currentAngle));
 }
 
 // ========================== SAFETY ==========================
+// Stop the moment the phone disconnects so the car never drives away on its own.
+void handleConnectionSafety() {
+  bool connected = SerialBT.hasClient();
+  if (wasConnected && !connected) {
+    Serial.println("Bluetooth client gone -- stopping for safety.");
+    stopMotors();
+    centerSteering();
+  }
+  wasConnected = connected;
+}
+
+// Optional time-based watchdog (off unless AUTO_STOP_MS > 0).
 void handleAutoStop() {
   if (motorsRunning && millis() - lastCommandTime > AUTO_STOP_MS) {
     stopMotors();

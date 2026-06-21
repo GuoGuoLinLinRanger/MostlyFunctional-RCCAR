@@ -8,22 +8,34 @@
     rc_car_ble     -> Bluetooth Low Energy (BLE), Nordic UART Service.
                          Works with the included web controller (app/index.html)
                          in any Web Bluetooth browser: Android Chrome, desktop
-                         Chrome/Edge. NOTE: iOS Safari does NOT support Web
-                         Bluetooth, so iPhones need a Web-Bluetooth-capable app.
+                         Chrome/Edge, AND with generic BLE controller/terminal
+                         apps that talk Nordic UART. NOTE: iOS Safari does NOT
+                         support Web Bluetooth, so iPhones need a BLE app.
 
-  Command protocol is IDENTICAL to the classic version:
-    F        -> move forward at current speed
-    B        -> move backward at current speed
+  Commands (each is a single character unless noted):
+    F        -> drive forward at current speed   (latches: keeps going until S)
+    B        -> drive backward at current speed   (latches)
     S        -> stop motors
-    L        -> steer left
-    R        -> steer right
+    L        -> steer a step further left
+    R        -> steer a step further right
     C        -> center steering
-    V<0-255> -> set motor speed, example: V160
-    A<0-180> -> set servo angle, example: A95
+    +        -> speed up one step  (map your app's "speed ++" button to this)
+    -        -> slow down one step  (map your app's "speed --" button to this)
+    V<number> -> set motor speed 0..255, needs a newline, example: V160
+    A<number> -> set servo angle 0..180, needs a newline, example: A95
 
-  Safety:
-    - Motors stop if no command arrives for AUTO_STOP_MS.
-    - Motors also stop immediately if the BLE client disconnects.
+  Why "+/-" and not just V<number>?  A generic controller app sends a button's
+  text once per tap and often does NOT append a newline, so "V160" alone never
+  gets parsed. The single-char +/- steppers work regardless of line-endings and
+  are floored at MIN_DRIVE_SPEED so "slow down" can't stall the car.
+
+  Drive model:
+    Movement LATCHES -- one tap of F/B keeps the car moving until you tap S, so
+    you don't have to spam the button (most controller apps send a command once
+    per tap, not continuously). Safety: motors stop immediately if the BLE client
+    disconnects. The included web remote streams F/B while held and sends S on
+    release, so it works the same way. The old time-based auto-stop is off by
+    default (AUTO_STOP_MS = 0); set it to e.g. 1500 to re-enable a watchdog.
 */
 
 #include <BLEDevice.h>
@@ -63,15 +75,27 @@ const int PWM_RESOLUTION = 8; // 8-bit: 0 to 255
 const int PWM_CHANNEL_A = 2;
 const int PWM_CHANNEL_B = 3;
 
-int currentSpeed = 255; // 0 to 255
+// Speed settings (0..255). Tune with +/- or V<number>.
+int currentSpeed = 255;
 const int MIN_SPEED = 0;
 const int MAX_SPEED = 255;
+const int SPEED_STEP = 25;       // how much +/- changes speed per tap
+const int MIN_DRIVE_SPEED = 110; // +/- won't drop below this (motors stall lower)
 
+// Steering calibration. Modify these after testing your physical steering.
 int centerAngle = 90;
-int leftAngle = 30;
-int rightAngle = 150;
+int leftAngle = 30;   // full-left servo angle (smaller = more left)
+int rightAngle = 150; // full-right servo angle (larger = more right)
+int currentAngle = 90;
+const int STEER_STEP = 15; // degrees per L/R tap
 
-const unsigned long AUTO_STOP_MS = 1000;
+// Drive direction so +/- can re-apply the new speed while moving.
+const int DIR_STOP = 0, DIR_FORWARD = 1, DIR_BACKWARD = -1;
+int driveDir = DIR_STOP;
+
+// Safety. AUTO_STOP_MS = 0 disables the time-based watchdog; the BLE disconnect
+// callback already stops the car when the controller goes away.
+const unsigned long AUTO_STOP_MS = 0;
 unsigned long lastCommandTime = 0;
 bool motorsRunning = false;
 
@@ -93,6 +117,7 @@ class ServerCallbacks : public BLEServerCallbacks {
     deviceConnected = false;
     Serial.println("BLE client disconnected. Stopping motors and re-advertising.");
     stopMotors(); // safety: never keep driving after the controller is gone
+    centerSteering();
     server->startAdvertising();
   }
 };
@@ -113,7 +138,7 @@ void setup() {
   setupMotorPins();
   setupServo();
   setupPWM();
-  
+
 
   stopMotors();
   centerSteering();
@@ -129,7 +154,7 @@ void setup() {
 
 // ========================== MAIN LOOP ==========================
 void loop() {
-  handleAutoStop();
+  if (AUTO_STOP_MS > 0) handleAutoStop();
   delay(10);
 }
 
@@ -219,7 +244,8 @@ void handleIncomingChar(char incomingChar) {
 bool isSingleCharCommand(char command) {
   command = toupper(command);
   return command == 'F' || command == 'B' || command == 'S' ||
-         command == 'L' || command == 'R' || command == 'C';
+         command == 'L' || command == 'R' || command == 'C' ||
+         command == '+' || command == '-';
 }
 
 void processSingleCharCommand(char command) {
@@ -230,9 +256,11 @@ void processSingleCharCommand(char command) {
     case 'F': moveForward(currentSpeed); break;
     case 'B': moveBackward(currentSpeed); break;
     case 'S': stopMotors(); break;
-    case 'L': steerLeft(); break;
-    case 'R': steerRight(); break;
+    case 'L': steerBy(-STEER_STEP); break; // lower angle = more left
+    case 'R': steerBy(+STEER_STEP); break; // higher angle = more right
     case 'C': centerSteering(); break;
+    case '+': changeSpeed(+SPEED_STEP); break;
+    case '-': changeSpeed(-SPEED_STEP); break;
     default: Serial.println("Unknown single-character command."); break;
   }
 }
@@ -273,6 +301,7 @@ void moveForward(int speedValue) {
   writeMotorPWM(MOTOR_A_PWM, PWM_CHANNEL_A, speedValue);
   writeMotorPWM(MOTOR_B_PWM, PWM_CHANNEL_B, speedValue);
 
+  driveDir = DIR_FORWARD;
   motorsRunning = speedValue > 0;
   Serial.println("Moving forward at speed " + String(speedValue));
   notify("F" + String(speedValue));
@@ -289,6 +318,7 @@ void moveBackward(int speedValue) {
   writeMotorPWM(MOTOR_A_PWM, PWM_CHANNEL_A, speedValue);
   writeMotorPWM(MOTOR_B_PWM, PWM_CHANNEL_B, speedValue);
 
+  driveDir = DIR_BACKWARD;
   motorsRunning = speedValue > 0;
   Serial.println("Moving backward at speed " + String(speedValue));
   notify("B" + String(speedValue));
@@ -303,26 +333,43 @@ void stopMotors() {
   digitalWrite(MOTOR_B_IN1, LOW);
   digitalWrite(MOTOR_B_IN2, LOW);
 
+  driveDir = DIR_STOP;
   motorsRunning = false;
   Serial.println("Motors stopped.");
   notify("S");
 }
 
+// Absolute speed (from V<number>). Allows the full 0..255 range.
 void setSpeed(int newSpeed) {
   currentSpeed = constrain(newSpeed, MIN_SPEED, MAX_SPEED);
+  reapplyDriveSpeed();
   Serial.println("Speed set to " + String(currentSpeed));
   notify("V" + String(currentSpeed));
 }
 
-// ========================== STEERING CONTROL ==========================
-void steerLeft() {
-  setSteeringAngle(leftAngle);
-  Serial.println("Steering left.");
+// Relative speed step (from +/-). Floored at MIN_DRIVE_SPEED so a "slow down"
+// tap can never leave the car too weak to move; use S or V0 to truly stop.
+void changeSpeed(int delta) {
+  currentSpeed = constrain(currentSpeed + delta, MIN_DRIVE_SPEED, MAX_SPEED);
+  reapplyDriveSpeed();
+  Serial.println("Speed -> " + String(currentSpeed));
+  notify("V" + String(currentSpeed));
 }
 
-void steerRight() {
-  setSteeringAngle(rightAngle);
-  Serial.println("Steering right.");
+// If we're already driving, push the new speed to the motors immediately.
+void reapplyDriveSpeed() {
+  if (driveDir == DIR_FORWARD)       moveForward(currentSpeed);
+  else if (driveDir == DIR_BACKWARD) moveBackward(currentSpeed);
+}
+
+// ========================== STEERING CONTROL ==========================
+// Step the steering relative to where it is now (finer than slamming to the
+// limits). Clamped to the calibrated left/right range.
+void steerBy(int deltaDegrees) {
+  int lo = min(leftAngle, rightAngle);
+  int hi = max(leftAngle, rightAngle);
+  int target = constrain(currentAngle + deltaDegrees, lo, hi);
+  setSteeringAngle(target);
 }
 
 void centerSteering() {
@@ -331,13 +378,15 @@ void centerSteering() {
 }
 
 void setSteeringAngle(int angle) {
-  angle = constrain(angle, 0, 180);
-  steeringServo.write(angle);
-  Serial.println("Servo angle set to " + String(angle));
-  notify("A" + String(angle));
+  currentAngle = constrain(angle, 0, 180);
+  steeringServo.write(currentAngle);
+  Serial.println("Servo angle set to " + String(currentAngle));
+  notify("A" + String(currentAngle));
 }
 
 // ========================== SAFETY ==========================
+// Optional time-based watchdog (off unless AUTO_STOP_MS > 0). The BLE disconnect
+// callback already stops the car when the controller goes away.
 void handleAutoStop() {
   if (motorsRunning && millis() - lastCommandTime > AUTO_STOP_MS) {
     stopMotors();

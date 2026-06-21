@@ -72,6 +72,11 @@
   </div>
 
   <div class="speed">
+    <label>Steering: <span id="steerVal">90°</span></label>
+    <input id="steer" type="range" min="30" max="150" value="90" disabled />
+  </div>
+
+  <div class="speed">
     <label>Speed: <span id="speedVal">255</span></label>
     <input id="speed" type="range" min="0" max="255" value="255" disabled />
   </div>
@@ -99,7 +104,9 @@ const disconnBtn = document.getElementById("disconnectBtn");
 const stopBtn    = document.getElementById("stopBtn");
 const speedEl    = document.getElementById("speed");
 const speedVal   = document.getElementById("speedVal");
-const controls   = document.querySelectorAll(".pad button, #stopBtn, #speed");
+const steerEl    = document.getElementById("steer");
+const steerVal   = document.getElementById("steerVal");
+const controls   = document.querySelectorAll(".pad button, #stopBtn, #speed, #steer");
 
 function setStatus(text, cls = "") {
   statusEl.textContent = text;
@@ -151,6 +158,7 @@ async function connect() {
     setConnected(true);
     setStatus("connected", "on");
     await send("V" + speedEl.value + "\n");
+    await send("A" + steerEl.value + "\n");
   } catch (e) {
     console.error(e);
     setStatus("connect failed", "err");
@@ -192,21 +200,48 @@ document.querySelectorAll(".pad button").forEach(btn => {
   }
   if (!press) return;
 
-  const start = e => { e.preventDefault(); startHold(press); };
   // Forward/Back release should stop the motors; steering returns to center.
   const isDrive = press === "F" || press === "B";
-  const end = e => { e.preventDefault(); stopHold(isDrive ? "S" : (release || null)); };
+  let held = false;
+
+  const start = e => {
+    e.preventDefault();
+    held = true;
+    // Capture the pointer so a finger that drifts slightly off the button still
+    // counts as held. Without this, pointerleave fired the moment your thumb
+    // moved — which is why holding felt like you had to keep re-tapping.
+    if (e.pointerId !== undefined && btn.setPointerCapture) {
+      try { btn.setPointerCapture(e.pointerId); } catch (_) {}
+    }
+    startHold(press);
+  };
+  const end = e => {
+    if (!held) return;
+    held = false;
+    e.preventDefault();
+    stopHold(isDrive ? "S" : (release || null));
+  };
 
   btn.addEventListener("pointerdown", start);
   btn.addEventListener("pointerup", end);
   btn.addEventListener("pointercancel", end);
-  btn.addEventListener("pointerleave", end);
+  // Intentionally NOT listening to pointerleave: with pointer capture the button
+  // keeps the pointer, and leave-events were what broke hold-to-drive.
 });
 
 stopBtn.addEventListener("click", () => { stopHold(); send("S"); });
 
 speedEl.addEventListener("input", () => { speedVal.textContent = speedEl.value; });
 speedEl.addEventListener("change", () => send("V" + speedEl.value + "\n"));
+
+// Proportional steering: drag the slider for any angle between full left/right.
+// Throttle to one write per animation frame so dragging can't flood the link.
+let steerRAF = 0;
+function flushSteer() { steerRAF = 0; send("A" + steerEl.value + "\n"); }
+steerEl.addEventListener("input", () => {
+  steerVal.textContent = steerEl.value + "°";
+  if (!steerRAF) steerRAF = requestAnimationFrame(flushSteer);
+});
 
 connectBtn.addEventListener("click", connect);
 disconnBtn.addEventListener("click", disconnect);

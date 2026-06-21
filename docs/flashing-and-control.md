@@ -96,22 +96,43 @@ not the folder.)
 
    | Send | Does |
    |---|---|
-   | `F` | forward |
-   | `B` | backward |
-   | `S` | stop |
-   | `L` | steer left |
-   | `R` | steer right |
+   | `F` | drive forward (latches — keeps going) |
+   | `B` | drive backward (latches) |
+   | `S` | **stop** |
+   | `L` | steer a step further left |
+   | `R` | steer a step further right |
    | `C` | center steering |
-   | `V160` | set speed 0–255 |
-   | `A95` | set steering angle 0–180 |
+   | `+` | speed up one step |
+   | `-` | slow down one step |
+   | `V160` | set exact speed 0–255 (needs a newline) |
+   | `A95` | set exact steering angle 0–180 (needs a newline) |
 
-   The car **auto-stops after 1 second** with no command — that's intentional,
-   so it doesn't run away if the phone disconnects. Keep sending while driving.
+   **Driving latches:** tap `F` once and the car keeps moving until you tap
+   `S` — you don't have to spam the button. It also stops automatically if the
+   Bluetooth connection drops. (The old 1-second auto-stop is off by default; set
+   `AUTO_STOP_MS` in the firmware to e.g. `1500` if you want that watchdog back.)
+
+   **Speed `+` / `-`:** these single characters work no matter how your app sets
+   line endings, so they're ideal for "speed ++ / speed --" buttons. They're
+   floored so "slow down" can't drop the car below the point where it stalls; use
+   `S` to stop. `V160`-style commands set an exact speed but **must end with a
+   newline**, or your app just buffers the text and nothing happens.
+
+   **Steering:** `L`/`R` now nudge the wheels a step at a time (tap again to turn
+   more); `C` re-centers. For smooth proportional steering, use the web remote's
+   steering slider (below) or map an app slider to send `A<angle>` (e.g. `A60`).
+
+   ### Using a BLE controller app (Nordic UART)
+   If you flashed `rc_car_ble` and drive it from a downloaded BLE controller app,
+   set each on-screen button to send one of the characters above (`F`, `B`, `S`,
+   `L`, `R`, `C`, `+`, `-`). Make sure there's a **Stop** button sending `S`.
 
 ### (Optional) Web remote instead of a terminal app
 If you flashed `rc_car_ble` instead, open `app/index.html` in **Chrome on
 Android or desktop** (not iOS Safari — it can't do Web Bluetooth), tap
-**Connect**, pick `ESP32_RC_Car`, and hold the on-screen buttons to drive.
+**Connect**, pick `ESP32_RC_Car`, and hold the on-screen buttons to drive. It has
+a **steering slider** for smooth proportional steering and a speed slider, and it
+re-sends while you hold a button so driving stays smooth.
 
 ## Step 9 — First drive checklist (do this with wheels off the ground)
 
@@ -131,7 +152,10 @@ Test in this order so a wiring mistake doesn't send the car off a table:
 | `ESP32_RC_Car` not in Bluetooth list | You flashed the BLE version — it won't show in normal pairing; use the web remote. Or flash `rc_car_classic`. |
 | A motor spins the wrong way | Swap that motor's two wires on the L298N |
 | Steering reversed | Swap `leftAngle` / `rightAngle` in the code |
-| Motors don't change speed with `V` | ENA/ENB jumpers still on the L298N — remove them |
+| Have to tap forward over and over to keep moving | Your app sends the command once per tap; the firmware now **latches** (tap `F` to go, `S` to stop). Re-flash if you're on an old build. |
+| Speed `+`/`-` buttons do nothing | Map them to send the single characters `+` and `-`. `V160`-style commands need a trailing newline — set your app's line ending to Newline, or just use `+`/`-`. |
+| Car barely crawls | Tap `+` a few times, or raise `currentSpeed` in the firmware. A weak/low battery also drops speed under the L298N's ~2 V loss. |
+| Motors don't change speed with `V` | ENA/ENB jumpers still on the L298N — remove them. Also make sure the `V###` command ends with a newline. |
 | ESP32 resets when motors start | Add the 470–1000µF capacitor; don't power motors from the ESP32 |
 | Motors don't move at all | Check the L298N ENA/ENB are wired (GPIO 4 / 5) and grounds are shared |
 
